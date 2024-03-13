@@ -6,8 +6,8 @@ from pysat.card import *
 
 slot = {}
 for ind, t in enumerate(times):
-    slot[t]=ind+1
-no_of_times=25
+    slot[t]=ind
+no_of_times = 25
 cnt=1
 id='Id'
 encodings = WCNF()
@@ -17,6 +17,9 @@ K = {} # event i starts at time j and takes k time slots = K[i][j][k]
 R = {} # resource i busy at time j with event k
 A = {} # resource i busy in time group j after time k
 B = {} # resource i busy in time group j before time k
+X = {} # resource r busy at time i
+D = {} # event i happens during time group j
+Idle = {} # resource i idle in time group j at time k
 costFunction={}
 costFunction['Linear'] = lambda x : x
 costFunction['Quadratic'] = lambda x : x**2
@@ -37,8 +40,6 @@ for e_key in events:
     print(e)
     S[e[id]] = []
     Y[e[id]] = []
-    S[e[id]].append(0)
-    Y[e[id]].append(0)
     for t in range(no_of_times):
         S[e[id]].append(cnt + 1)
         formula.append(S[e[id]][t])
@@ -130,7 +131,8 @@ for cc in spread_events:
                 lst = []
                 for y in x:
                     lst.append(S[e][y])
-                formula=CardEnc.atmost(lits=lst,bound=1)
+                formula=CardEnc.atmost(lits=lst,bound=1,top_id=cnt)
+                cnt = 1 + max(abs(lit) for clause in formula for lit in clause)
                 # a bit hardcoded until we find an efficient way to count variables for easy cardinality constraints(maybe a totalizer would be nice)
                 print(lst)
                 for f in formula.clauses:
@@ -138,8 +140,7 @@ for cc in spread_events:
 
 # Avoid clashes constraint
 for r in resources:
-    K[r]=[]
-    K[r].append(0)
+    R[r]=[]
 
     for t in range(no_of_times):
         dct = {}
@@ -148,20 +149,147 @@ for r in resources:
             dct[e] = cnt + 1
             lst.append(cnt + 1)
             cnt += 1
-        formula=CardEnc.atmost(lits=lst,bound=1)
+        formula=CardEnc.atmost(lits=lst,bound=1,top_id=cnt)
+        cnt = 1 + max(abs(lit) for clause in formula for lit in clause)
         for f in formula.clauses:
              encodings.append(f)
-        K[r].append(dct)
+        R[r].append(dct)
 
-# Limit idle times constraint
+#Limit idle times constraint
 
-# for x in resources:
-#     tg = []
-#     for tg_key in timeGroups:
-#         tg = timeGroups[tg_key]
-#         encodings.append(-A[x][tg_key][tg[len(tg)-1]])
-#         for t in tg:
-#
-#
-#
-#
+for x in resources:
+    R[x] = []
+    for t in range(no_of_times):
+    # encoding equivalence relation here
+        dct = {}
+        for e in events:
+            dct[e] = cnt + 1
+            cnt += 1
+        R[x].append(dct)
+
+for x in resources:
+    tg = []
+    A[x] = {}
+    for tg_key in timeGroups:
+        tg = timeGroups[tg_key]
+        A[x][tg_key] = []
+        for t in tg:
+            A[x][tg_key].append(cnt + 1)
+            cnt += 1
+
+for x in resources:
+    tg = []
+    B[x] = {}
+    for tg_key in timeGroups:
+        tg = timeGroups[tg_key]
+        B[x][tg_key] = []
+        for t in tg:
+            B[x][tg_key].append(cnt + 1)
+            cnt += 1
+
+for x in resources:
+    tg = []
+    Idle[x] = {}
+    for tg_key in timeGroups:
+        tg = timeGroups[tg_key]
+        Idle[x][tg_key] = []
+        for t in tg:
+            Idle[x][tg_key].append(cnt + 1)
+            cnt += 1
+
+for x in resources:
+    X[x]=[]
+    for t in range(no_of_times):
+        X[x].append(cnt + 1)
+        cnt += 1
+
+for x in resources:
+    for t in range(no_of_times):
+    # encoding equivalence relation here
+        lst = []
+        for e in events:
+            lst.append(R[x][t][e])
+            encodings.append([-R[x][t][e],X[x][t]])
+        newlst=lst
+        lst.append(-X[x][t])
+        encodings.append(newlst)
+
+
+
+for x in resources:
+    tg = []
+    for tg_key in timeGroups:
+        tg = timeGroups[tg_key]
+        print(slot[tg[len(tg)-1]])
+        encodings.append([-A[x][tg_key][slot[tg[len(tg)-1]]%5]])
+        encodings.append([-B[x][tg_key][0]])
+        for tt in tg[:len(tg)-1]:
+            t = int(slot[tt])%5
+            #a[x][tgkey][t]<=>()
+            encodings.append([-A[x][tg_key][t],A[x][tg_key][t+1],X[x][t + 1]])
+            encodings.append([A[x][tg_key][t],-A[x][tg_key][t+1]])
+            encodings.append([A[x][tg_key][t],-X[x][t + 1]])
+
+        for tt in tg[1:]:
+            t = int(slot[tt])%5
+            encodings.append([-B[x][tg_key][t],B[x][tg_key][t - 1],X[x][t - 1]])
+            encodings.append([B[x][tg_key][t],-B[x][tg_key][t - 1]])
+            encodings.append([B[x][tg_key][t],-X[x][t - 1]])
+
+        for tt in tg:
+            t = int(slot[tt])%5
+            encodings.append([Idle[x][tg_key][t],X[x][t],-A[x][tg_key][t],-B[x][tg_key][t]])
+            encodings.append([-Idle[x][tg_key][t],-X[x][t]])
+            encodings.append([-Idle[x][tg_key][t],A[x][tg_key][t]])
+            encodings.append([-Idle[x][tg_key][t],B[x][tg_key][t]])
+
+for tg in timeGroups:
+    if tg == 'gr_TimesDurationTwo':
+        continue
+    for r_key in resourceGroups['gr_Teachers']:
+        for t in timeGroups[tg]:
+            encodings.append([-Idle[r_key][tg][slot[t]%5]], weight=3)
+
+
+for rs in resourceGroups['gr_Teachers']:
+    r=events[rs]
+    D[rs]={}
+    for tg in timeGroups:
+        if tg == 'gr_TimesDurationTwo':
+            continue
+        D[rs][tg] = cnt + 1
+        cnt += 1
+
+for rs in resourceGroups['gr_Teachers']:
+    r=events[rs]
+    for tg in timeGroups:
+        if tg == 'gr_TimesDurationTwo':
+            continue
+        lst=[]
+        for tt in tg:
+            lst.append(X[rs][slot[tt]%5])
+        newlst=lst
+        newlst.append(-D[rs][tg])
+        encodings.append(newlst)
+        for x in lst:
+            encodings.append([D[rs][tg],-x])
+
+for rs in resourceGroups['gr_Teachers']:
+    r=events[rs]
+    lst = []
+    b=2
+    if rs=='T6':
+        b=3
+    for tg in timeGroups:
+        if tg == 'gr_TimesDurationTwo':
+            continue
+        lst.append(D[rs][tg])
+    for bbc in range(b,6):
+        tot=Totalizer(lst,top=cnt)
+
+
+
+
+
+
+
