@@ -1,3 +1,4 @@
+import copy
 from data_parser import *
 from Totalizer import *
 
@@ -209,8 +210,8 @@ for x in resources:
         for e in events:
             lst.append(R[x][t][e])
             encodings.append([-R[x][t][e], X[x][t]])
-        newlst = lst
-        lst.append(-X[x][t])
+        newlst = copy.deepcopy(lst)
+        newlst.append(-X[x][t])
         encodings.append(newlst)
 
 for x in resources:
@@ -265,7 +266,7 @@ for rs in resourceGroups['gr_Teachers']:
         for tt in timeGroups[tg]:
             # print(tt)
             lst.append(X[rs][slot[tt] % 5])
-        newlst = lst
+        newlst = copy.deepcopy(lst)
         newlst.append(-D[rs][tg])
         encodings.append(newlst)
         for x in lst:
@@ -288,7 +289,7 @@ for rs in resources:
         for tg in c['TimeGroups']:
             lst.append(D[rs][tg])
         tot = Totalizer(lst, top=cnt)
-        cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+        cnt = max(abs(lit) for clause in tot.clauses for lit in clause)
         if mini > 0:
             encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
         for i in range(1, mini):
@@ -296,13 +297,13 @@ for rs in resources:
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i))
-            cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause)
         for i in range(maximum + 2, len(lst) + 1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](i - maximum - 1))
-            cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause)
         if maximum < len(lst):
             encodings.append([-tot.root.lits[len(lst)]], weight=w * costFunction[cf](len(lst) - maximum))
 
@@ -345,4 +346,5 @@ for e in events:
             encodings.append([-list[0], S[e][t]])
 
 rc2 = RC2(encodings)
-print(rc2.compute())
+rc2.compute()
+print(rc2.cost)
