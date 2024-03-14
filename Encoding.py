@@ -31,11 +31,11 @@ for e_key in events:
     for t in range(no_of_times):
         K[e_key].append([])
         K[e_key][t].append(0)
-        for d in range(1, 3):
+        for d in range(1, 6):
             K[e_key][t].append(cnt + 1)
             cnt += 1
     formula = []
-    #print(e)
+    # print(e)
     S[e[id]] = []
     Y[e[id]] = []
     for t in range(no_of_times):
@@ -67,7 +67,7 @@ for e_key in events:
     for c_id in e['DistributeSplitEventsConstraint']:
         c = distribute_split_events[c_id]
         d = int(c['Duration'])
-        min = int(c['Minimum'])
+        mini = int(c['Minimum'])
         maximum = int(c['Maximum'])
         formula = []
 
@@ -86,12 +86,12 @@ for e_key in events:
         # the other solution was to add clauses -rhs[i] weight*costfunction(1) for i<min and similar for max
         # however, the solution from below allows for nonlinear cost function, while the other doesn't
 
-        if min > 0:
-            encodings.append([formulaTOT.root.lits[1]], costFunction[c['CostFunction']](min) * int(c['Weight']))
-        for i in range(1, min):
+        if mini > 0:
+            encodings.append([formulaTOT.root.lits[1]], costFunction[c['CostFunction']](mini) * int(c['Weight']))
+        for i in range(1, mini):
             # encode a ^ b as exactly_2(a,b)
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
-            encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](min - i) * int(c['Weight']))
+            encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i) * int(c['Weight']))
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause)
 
         for i in range(maximum + 2, len(formula) + 1):
@@ -278,7 +278,7 @@ for rs in resources:
     for c_key in r['ClusterBusyTimes']:
         c = cluster_busy_times[c_key]
         lst = []
-        min = int(c['Minimum'])
+        mini = int(c['Minimum'])
         maximum = int(c['Maximum'])
         w = int(c['Weight'])
         cf = c['CostFunction']
@@ -289,13 +289,13 @@ for rs in resources:
             lst.append(D[rs][tg])
         tot = Totalizer(lst, top=cnt)
         cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
-        if min > 0:
-            encodings.append(tot.root.lits[1], weight=w * costFunction[cf](min))
-        for i in range(1, min):
+        if mini > 0:
+            encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
+        for i in range(1, mini):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
-            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](min - i))
+            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i))
             cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
         for i in range(maximum + 2, len(lst) + 1):
             a = tot.root.lits[i]
@@ -315,6 +315,34 @@ for r in resources:
         print(avoid_unavailable_times[c]['Times'])
         for t in avoid_unavailable_times[c]['Times']:
             encodings.append([-X[r][slot[t]]])
+# s[e][t] <=>  exactly_1 (k[e][t][1], k[e][t][2])
+# s[e][t] => exactly_1 (k[e][t][1], k[e][t][2]) == not s[e][t] || exactly_1 (k[e][t][1], k[e][t][2])
+# s[e][t] <= exactly_1 == not exactly_1 || s[e][t]
+# k[e][t][d] => y[e][t] and y[e][t+1] and ... and y[e][t+d-1]
+# not k[e][t][d] || (y[e][t] and y[e][t+1] and ... and y[e][t+d-1])
+for e in events:
+    duration = int(events[e]['Duration'])
 
+    for t in range(no_of_times):
+        list = []
+        for d in range(1, min(duration + 1, 6 - t % 5)):
+            list.append(K[e][t][d])
+            for di in range(t, t + d):
+                encodings.append([-K[e][t][d], Y[e][di]])
 
+        if len(list) == 0:
+            print(t)
 
+        if len(list) > 1:
+            tot = Totalizer(list, top=cnt)
+            cnt = max(abs(lit) for clause in tot.clauses for lit in clause)
+
+            encodings.append([tot.root.lits[2], -tot.root.lits[1], S[e][t]])
+            encodings.append([- S[e][t], -tot.root.lits[2]])
+            encodings.append([- S[e][t], tot.root.lits[1]])
+        else:
+            encodings.append([-S[e][t], list[0]])
+            encodings.append([-list[0], S[e][t]])
+
+rc2 = RC2(encodings)
+print(rc2.compute())
