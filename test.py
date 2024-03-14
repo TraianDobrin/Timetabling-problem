@@ -7,7 +7,7 @@ rc2=RC2(x)
 formula=CardEnc.equals(lits=[1,2,3,4,5],bound=4,encoding=6)
 print(formula.to_dimacs())
 print()
-f=Totalizer(lits=[1,2,3,4,5,6,7,8,9,10,11],top=120)
+f=Totalizer(lits=[-1,-2,-3,-4,-5,-6,7,-8,-9,-10,-11],top=12)
 print()
 print(f.clauses)
 n=f.root
@@ -21,6 +21,8 @@ def dfs(n):
 dfs(n)
 for c in f.clauses:
     rc2.add_clause(c)
-rc2.add_clause([f.root.lits[7]])
+#rc2.add_clause([f.root.lits[7]])
+
+rc2.add_clause([f.root.lits[11]])
 m=rc2.compute()
 print(m)

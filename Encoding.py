@@ -1,4 +1,5 @@
 from data_parser import *
+from Totalizer import *
 
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
@@ -62,7 +63,7 @@ for e_key in events:
 
 top=cnt
 # Distribute split events
-'''
+
 for e_key in events:
     e=events[e_key]
     if len(e['DistributeSplitEventsConstraint']) == 0:
@@ -72,40 +73,40 @@ for e_key in events:
         c=distribute_split_events[c_id]
         d = int(c['Duration'])
         min = int(c['Minimum'])
-        max = int(c['Maximum'])
+        maximum = int(c['Maximum'])
         formula = []
 
         for t in range(no_of_times):
             formula.append(K[e_key][t][d])
 
-        formulaTOT=ITotalizer(lits=formula,ubound=len(formula),top_id=10000)
-        for f in formulaTOT.cnf.clauses:
+        formulaTOT=Totalizer(lits=formula,top=cnt)
+        for f in formulaTOT.clauses:
             encodings.append(f)
+        cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
         # rhs is in unary, so if at any point
         # rhs[i]=0 and rhs[i-1]=1 then there are exactly i-1 true variables
         # then assign a corresponding cost. This has to happen exactly one
         # so the cost function is only applied once per violation
         # could have been done differently but I hoped this would be more helpful to the solver
-        # the other solution was to add clauses -rhs[i] weight*costfunction for i<min and similar for max
+        # the other solution was to add clauses -rhs[i] weight*costfunction(1) for i<min and similar for max
         # however, the solution from below allows for nonlinear cost function, while the other doesn't
 
         if min>0:
-            encodings.append([formulaTOT.rhs[0]],costFunction[c['CostFunction']](min)*int(c['Weight']))
+            encodings.append([formulaTOT.root.lits[1]],costFunction[c['CostFunction']](min)*int(c['Weight']))
         for i in range(1,min):
             # encode a ^ b as exactly_2(a,b)
-            miniform = ITotalizer(lits=[-formulaTOT.rhs[i],formulaTOT.rhs[i-1]],ubound=2,top_id=top)
-            encodings.append([miniform.rhs[2]],costFunction[c['CostFunction']](min-i)*c['Weight'])
-            miniform.delete()
+            miniform = Totalizer(lits=[-formulaTOT.root.lits[i],formulaTOT.root.lits[i-1]],top=cnt)
+            encodings.append([miniform.root.lits[2]],costFunction[c['CostFunction']](min-i)*int(c['Weight']))
+            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause)
 
-        for i in range(max+2,len(formulaTOT.cnf.clauses)):
-            miniform = ITotalizer(lits=[-formulaTOT.rhs[i],formulaTOT.rhs[i-1]],ubound=2,top_id=top)
-            encodings.append([miniform.rhs[2]],costFunction[c['CostFunction']](i-max-1)*c['Weight'])
-            miniform.delete()
+        for i in range(maximum+2,len(formula)+1):
+            miniform = Totalizer(lits=[-formulaTOT.root.lits[i],formulaTOT.root.lits[i-1]],top=cnt)
+            encodings.append([miniform.root.lits[2]],costFunction[c['CostFunction']](i-maximum-1)*int(c['Weight']))
+            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause)
 
-        if max<len(formula):
-            encodings.append([formulaTOT.rhs[len(formula)]],costFunction[c['CostFunction']]((len(formula)-max))*c['Weight'])
-# my feather
-'''
+        if maximum<len(formula):
+            encodings.append([formulaTOT.root.lits[len(formula)]],costFunction[c['CostFunction']]((len(formula)-maximum))*int(c['Weight']))
+
 # Prefer times constraint
 for e_key in events:
     e=events[e_key]
@@ -252,7 +253,7 @@ for tg in timeGroups:
 
 
 for rs in resourceGroups['gr_Teachers']:
-    r=events[rs]
+    r=resources[rs]
     D[rs]={}
     for tg in timeGroups:
         if tg == 'gr_TimesDurationTwo':
@@ -261,12 +262,13 @@ for rs in resourceGroups['gr_Teachers']:
         cnt += 1
 
 for rs in resourceGroups['gr_Teachers']:
-    r=events[rs]
+    r=resources[rs]
     for tg in timeGroups:
         if tg == 'gr_TimesDurationTwo':
             continue
         lst=[]
-        for tt in tg:
+        for tt in timeGroups[tg]:
+            print(tt)
             lst.append(X[rs][slot[tt]%5])
         newlst=lst
         newlst.append(-D[rs][tg])
@@ -274,18 +276,39 @@ for rs in resourceGroups['gr_Teachers']:
         for x in lst:
             encodings.append([D[rs][tg],-x])
 
-for rs in resourceGroups['gr_Teachers']:
-    r=events[rs]
-    lst = []
-    b=2
-    if rs=='T6':
-        b=3
-    for tg in timeGroups:
-        if tg == 'gr_TimesDurationTwo':
-            continue
-        lst.append(D[rs][tg])
-    for bbc in range(b,6):
+for rs in resources:
+    r=resources[rs]
+    if len(r['ClusterBusyTimes'])==0:
+        continue
+    for c_key in r['ClusterBusyTimes']:
+        c=cluster_busy_times[c_key]
+        lst = []
+        min=int(c['Minimum'])
+        maximum=int(c['Maximum'])
+        w=int(c['Weight'])
+        cf=c['CostFunction']
+        # not handling case where multiple such constraints span the same time groups, optimizations could be made for such things
+        for tg in c['TimeGroups']:
+            lst.append(D[rs][tg])
         tot=Totalizer(lst,top=cnt)
+        cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+        if min>0:
+            encodings.append(tot.root.lits[1],weight=w*costFunction[cf](min))
+        for i in range(1,min):
+            a=tot.root.lits[i]
+            b=tot.root.lits[i-1]
+            minitot=Totalizer([-a,b],top=cnt)
+            encodings.append([-minitot.root.lits[2]],weight=w*costFunction[cf](min-i))
+            cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+        for i in range(maximum+2,len(lst)+1):
+            a=tot.root.lits[i]
+            b=tot.root.lits[i-1]
+            minitot=Totalizer([-a,b],top=cnt)
+            encodings.append([-minitot.root.lits[2]],weight=w*costFunction[cf](i-maximum-1))
+            cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+        if maximum<len(lst):
+            encodings.append([-tot.root.lits[len(lst)]],weight=w*costFunction[cf](len(lst)-maximum))
+
 
 
 

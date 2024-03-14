@@ -332,6 +332,12 @@ for c in root.findall('.//ClusterBusyTimesConstraint'):
     el=c.find('Weight')
     if el is not None:
         c_data['Weight']=el.text
+    el=c.find('Minimum')
+    if el is not None:
+        c_data['Minimum']=el.text
+    el=c.find('Maximum')
+    if el is not None:
+        c_data['Maximum']=el.text
 
     for r in c.findall('.//AppliesTo/Resources/Resource'):
         ref = r.get('Reference')
