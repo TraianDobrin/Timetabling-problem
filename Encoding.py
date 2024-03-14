@@ -78,7 +78,7 @@ for e_key in events:
         formulaTOT = Totalizer(lits=formula, top=cnt)
         for f in formulaTOT.clauses:
             encodings.append(f)
-        cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause)
+        cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause) + 1
         # rhs is in unary, so if at any point
         # rhs[i]=0 and rhs[i-1]=1 then there are exactly i-1 true variables
         # then assign a corresponding cost. This has to happen exactly one
@@ -93,13 +93,13 @@ for e_key in events:
             # encode a ^ b as exactly_2(a,b)
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
             encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i) * int(c['Weight']))
-            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         for i in range(maximum + 2, len(formula) + 1):
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
             encodings.append([miniform.root.lits[2]],
                              costFunction[c['CostFunction']](i - maximum - 1) * int(c['Weight']))
-            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         if maximum < len(formula):
             encodings.append([formulaTOT.root.lits[len(formula)]],
@@ -131,7 +131,7 @@ for cc in spread_events:
                 for y in x:
                     lst.append(S[e][y])
                 formula = CardEnc.atmost(lits=lst, bound=1, top_id=cnt)
-                cnt = 1 + max(abs(lit) for clause in formula for lit in clause)
+                cnt = 1 + max(abs(lit) for clause in formula for lit in clause) +1
                 # a bit hardcoded until we find an efficient way to count variables for easy cardinality constraints(
                 # maybe a totalizer would be nice)
                 # print(lst)
@@ -150,7 +150,7 @@ for r in resources:
             lst.append(cnt + 1)
             cnt += 1
         formula = CardEnc.atmost(lits=lst, bound=1, top_id=cnt)
-        cnt = 1 + max(abs(lit) for clause in formula for lit in clause)
+        cnt = 1 + max(abs(lit) for clause in formula for lit in clause) + 1
         for f in formula.clauses:
             encodings.append(f)
         R[r].append(dct)
@@ -289,7 +289,7 @@ for rs in resources:
         for tg in c['TimeGroups']:
             lst.append(D[rs][tg])
         tot = Totalizer(lst, top=cnt)
-        cnt = max(abs(lit) for clause in tot.clauses for lit in clause)
+        cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
         if mini > 0:
             encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
         for i in range(1, mini):
@@ -297,13 +297,13 @@ for rs in resources:
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i))
-            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
         for i in range(maximum + 2, len(lst) + 1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](i - maximum - 1))
-            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
         if maximum < len(lst):
             encodings.append([-tot.root.lits[len(lst)]], weight=w * costFunction[cf](len(lst) - maximum))
 
@@ -323,8 +323,10 @@ for r in resources:
 # not k[e][t][d] || (y[e][t] and y[e][t+1] and ... and y[e][t+d-1])
 for e in events:
     duration = int(events[e]['Duration'])
+    y_list = []
 
     for t in range(no_of_times):
+        y_list.append(Y[e][t])
         list = []
         for d in range(1, min(duration + 1, 6 - t % 5)):
             list.append(K[e][t][d])
@@ -336,7 +338,7 @@ for e in events:
 
         if len(list) > 1:
             tot = Totalizer(list, top=cnt)
-            cnt = max(abs(lit) for clause in tot.clauses for lit in clause)
+            cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
 
             encodings.append([tot.root.lits[2], -tot.root.lits[1], S[e][t]])
             encodings.append([- S[e][t], -tot.root.lits[2]])
@@ -344,6 +346,12 @@ for e in events:
         else:
             encodings.append([-S[e][t], list[0]])
             encodings.append([-list[0], S[e][t]])
+
+    card = CardEnc.equals(y_list, bound=duration, top_id=cnt)
+    for clause in card.clauses:
+        encodings.append(clause)
+
+    cnt = max(abs(lit) for clause in card.clauses for lit in clause) + 1
 
 rc2 = RC2(encodings)
 rc2.compute()
