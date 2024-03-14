@@ -1,16 +1,18 @@
 import xml.etree.ElementTree as ET
 
+
 def initialize(x):
     x['DistributeSplitEventsConstraint'] = []
-    x['SpreadEventsConstraint']= []
+    x['SpreadEventsConstraint'] = []
     x['AvoidUnavailableTimes'] = []
+
 
 def parseResource(resource):
     resource_id = resource.get('Id')
     resource_data = {}
     resource_data['AvoidUnavailableTimes'] = []
     resource_data['ClusterBusyTimes'] = []
-    resource_data['Id']=resource_id
+    resource_data['Id'] = resource_id
     # Check if Name element exists
     name_element = resource.find('Name')
     if name_element is not None:
@@ -18,11 +20,11 @@ def parseResource(resource):
     else:
         resource_data['Name'] = None
 
-    resource_type=resource.find('.//ResourceType')
+    resource_type = resource.find('.//ResourceType')
     if resource_type is not None:
         resource_data['ResourceType'] = resource_type.get('Reference')
     else:
-        resource_data['ResourceType']= None
+        resource_data['ResourceType'] = None
 
     # Check if TimeGroup element exists
     resource_data['ResourceGroups'] = []
@@ -30,6 +32,7 @@ def parseResource(resource):
         resource_data['ResourceGroups'].append(resource_group.get('Reference'))
         resourceGroups[resource_group.get('Reference')].append(resource.get('Id'))
     return resource_data
+
 
 # Parse the XML file
 tree = ET.parse('data.xml')
@@ -45,7 +48,7 @@ resourceGroups = {}
 resourceGroupsConstraints = {}
 eventGroups = {}
 distribute_split_events = {}
-spread_events= {}
+spread_events = {}
 avoid_unavailable_times = {}
 limit_idle_times = {}
 cluster_busy_times = {}
@@ -84,12 +87,12 @@ for time in root.findall('.//Time'):
     else:
         time_data['Name'] = None
 
-    day_element=time.find('Day')
+    day_element = time.find('Day')
     if day_element is not None:
         time_data['Day'] = day_element.get('Reference')
         timeGroups[time_data['Day']].append(time_id)
     else:
-        time_data['Day']= None
+        time_data['Day'] = None
 
     # Check if TimeGroup element exists
     time_data['TimeGroup'] = []
@@ -110,8 +113,7 @@ for res_group in root.findall('.//ResourceGroups/ResourceGroup'):
 
 # Parse resources
 for resource in root.findall('.//Resource'):
-
-    resource_data=parseResource(resource)
+    resource_data = parseResource(resource)
     resources[resource_data['Id']] = resource_data
 
 # Parse event groups
@@ -136,15 +138,15 @@ for event in root.findall('.//Event'):
     else:
         event_data['Name'] = None
 
-    duration_element=event.find('Duration')
+    duration_element = event.find('Duration')
     if duration_element is not None:
-        dur=duration_element.text
+        dur = duration_element.text
         if dur is not None:
             event_data['Duration'] = int(dur)
         else:
-            event_data['Duration']= None
+            event_data['Duration'] = None
     else:
-        event_data['Duration']= None
+        event_data['Duration'] = None
 
     # Check if TimeGroup element exists
     event_data['EventGroups'] = []
@@ -154,16 +156,16 @@ for event in root.findall('.//Event'):
     for event_group_element in event.findall('.//Course'):
         event_data['EventGroups'].append(event_group_element.get('Reference'))
         eventGroups[event_group_element.get('Reference')].append(event_id)
-    event_data['Resources']=[]
+    event_data['Resources'] = []
     ress = event.find('Resources')
     if ress is not None:
         for res in ress.findall('.//Resource'):
-            res_data={}
+            res_data = {}
             if res is not None:
                 res_ref = res.get('Reference')
             else:
                 res_ref = None
-            #print(res_ref is None)
+            # print(res_ref is None)
             event_data['Resources'].append(res_ref)
     if event_group_element is not None:
         event_data['EventGroup'] = event_group_element.get('Reference')
@@ -171,81 +173,80 @@ for event in root.findall('.//Event'):
         event_data['EventGroup'] = None
     events[event_id] = event_data
 
-#PreferTimesConstraint
+# PreferTimesConstraint
 for c in root.findall('.//PreferTimesConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Duration')
+        c_data['Required'] = el.text
+    el = c.find('Duration')
     if el is not None:
-        c_data['Duration']=el.text
-    el=c.find('Minimum')
+        c_data['Duration'] = el.text
+    el = c.find('Minimum')
     if el is not None:
-        c_data['Minimum']=el.text
-    el=c.find('Maximum')
+        c_data['Minimum'] = el.text
+    el = c.find('Maximum')
     if el is not None:
-        c_data['Maximum']=el.text
-    el=c.find('Weight')
+        c_data['Maximum'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
+        c_data['Weight'] = el.text
     c_data['EventGroups'] = []
     c_data['TimeGroups'] = []
     for e in c.findall('.//AppliesTo/EventGroups/EventGroup'):
         c_data['EventGroups'].append(e.get('Reference')[3:])
     for e in c.findall('.//TimeGroups/TimeGroup'):
         c_data['TimeGroups'].append(e.get('Reference')[3:])
-        #print(ref)
-    prefer_times[id]=c_data
-
+        # print(ref)
+    prefer_times[id] = c_data
 
 for c in root.findall('.//DistributeSplitEventsConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Duration')
+        c_data['Required'] = el.text
+    el = c.find('Duration')
     if el is not None:
-        c_data['Duration']=el.text
-    el=c.find('Minimum')
+        c_data['Duration'] = el.text
+    el = c.find('Minimum')
     if el is not None:
-        c_data['Minimum']=el.text
-    el=c.find('Maximum')
+        c_data['Minimum'] = el.text
+    el = c.find('Maximum')
     if el is not None:
-        c_data['Maximum']=el.text
-    el=c.find('Weight')
+        c_data['Maximum'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
+        c_data['Weight'] = el.text
     for e in c.findall('.//AppliesTo/EventGroups/EventGroup'):
         ref = e.get('Reference')[3:]
         events[ref]['DistributeSplitEventsConstraint'].append(id)
-        #print(ref)
-    distribute_split_events[id]=c_data
+        # print(ref)
+    distribute_split_events[id] = c_data
 
 for c in root.findall('.//SpreadEventsConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Duration')
+        c_data['Required'] = el.text
+    el = c.find('Duration')
     if el is not None:
-        c_data['Duration']=el.text
-    el=c.find('Weight')
+        c_data['Duration'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
-    c_data['EventGroups']=[]
+        c_data['Weight'] = el.text
+    c_data['EventGroups'] = []
     for e in c.findall('.//EventGroups/EventGroup'):
         ref = e.get('Reference')[3:]
         c_data['EventGroups'].append(e.get('Reference'))
@@ -256,31 +257,31 @@ for c in root.findall('.//SpreadEventsConstraint'):
         ref = t.get('Reference')
         new_data = {}
         new_data['TimeGroup'] = ref
-        el=t.find('Minimum')
+        el = t.find('Minimum')
         if el is not None:
-            new_data['Minimum']=el.text
-        el=t.find('Maximum')
+            new_data['Minimum'] = el.text
+        el = t.find('Maximum')
         if el is not None:
-            new_data['Maximum']=el.text
+            new_data['Maximum'] = el.text
         c_data['Times'].append(new_data)
 
-    spread_events[id]=c_data
+    spread_events[id] = c_data
 
 for c in root.findall('.//LimitIdleTimesConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Duration')
+        c_data['Required'] = el.text
+    el = c.find('Duration')
     if el is not None:
-        c_data['Duration']=el.text
-    el=c.find('Weight')
+        c_data['Duration'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
+        c_data['Weight'] = el.text
 
     for r in c.findall('.//AppliesTo/ResourceGroups/ResourceGroup'):
         ref = r.get('Reference')
@@ -291,23 +292,23 @@ for c in root.findall('.//LimitIdleTimesConstraint'):
         ref = t.get('Reference')
         c_data['TimeGroups'].append(ref)
 
-    limit_idle_times[id]=c_data
+    limit_idle_times[id] = c_data
 
 for c in root.findall('.//AvoidUnavailableTimesConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Duration')
+        c_data['Required'] = el.text
+    el = c.find('Duration')
     if el is not None:
-        c_data['Duration']=el.text
-    el=c.find('Weight')
+        c_data['Duration'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
+        c_data['Weight'] = el.text
 
     for r in c.findall('.//AppliesTo/Resources/Resource'):
         ref = r.get('Reference')
@@ -318,26 +319,26 @@ for c in root.findall('.//AvoidUnavailableTimesConstraint'):
         ref = t.get('Reference')
         c_data['Times'].append(ref)
 
-    avoid_unavailable_times[id]=c_data
+    avoid_unavailable_times[id] = c_data
 
 for c in root.findall('.//ClusterBusyTimesConstraint'):
     c_data = {}
-    id=c.get('Id')
-    el=c.find('CostFunction')
+    id = c.get('Id')
+    el = c.find('CostFunction')
     if el is not None:
-        c_data['CostFunction']=el.text
-    el=c.find('Required')
+        c_data['CostFunction'] = el.text
+    el = c.find('Required')
     if el is not None:
-        c_data['Required']=el.text
-    el=c.find('Weight')
+        c_data['Required'] = el.text
+    el = c.find('Weight')
     if el is not None:
-        c_data['Weight']=el.text
-    el=c.find('Minimum')
+        c_data['Weight'] = el.text
+    el = c.find('Minimum')
     if el is not None:
-        c_data['Minimum']=el.text
-    el=c.find('Maximum')
+        c_data['Minimum'] = el.text
+    el = c.find('Maximum')
     if el is not None:
-        c_data['Maximum']=el.text
+        c_data['Maximum'] = el.text
 
     for r in c.findall('.//AppliesTo/Resources/Resource'):
         ref = r.get('Reference')
@@ -348,7 +349,7 @@ for c in root.findall('.//ClusterBusyTimesConstraint'):
         ref = t.get('Reference')
         c_data['TimeGroups'].append(ref)
 
-    cluster_busy_times[id]=c_data
+    cluster_busy_times[id] = c_data
 
 print(times)
 print(resources)
