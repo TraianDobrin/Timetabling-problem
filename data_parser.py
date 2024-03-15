@@ -351,8 +351,11 @@ for c in root.findall('.//ClusterBusyTimesConstraint'):
 
     cluster_busy_times[id] = c_data
 
+times.pop(None)
 print(times)
+resources.pop(None)
 print(resources)
+events.pop(None)
 print(events)
 print(distribute_split_events)
 print(spread_events)
@@ -360,7 +363,9 @@ print(avoid_unavailable_times)
 print(limit_idle_times)
 print(cluster_busy_times)
 print(timeGroups)
+resourceGroups.pop(None)
 print(resourceGroups)
 print(eventGroups)
+resourceGroupsConstraints.pop(None)
 print(resourceGroupsConstraints)
 print(prefer_times)

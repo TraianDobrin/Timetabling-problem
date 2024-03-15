@@ -13,6 +13,11 @@ no_of_times = 25
 cnt = 1
 id = 'Id'
 encodings = WCNF()
+def add_tot_clauses(tot):
+    for x in tot.clauses:
+        encodings.append(x)
+        if 0 in x:
+            print(x)
 S = {}  # start times of events
 Y = {}  # true if event i takes place at time j
 K = {}  # event i starts at time j and takes k time slots = K[i][j][k]
@@ -51,14 +56,32 @@ for e_key in events:
         cnt += 1
 
     formula = []
-    for t in range(no_of_times):
-        formula = [-S[e[id]][t], Y[e[id]][t]]
-        if t != no_of_times - 1:
-            formula.append(Y[e[id]][t + 1])
+    for t in range(1,no_of_times):
+        formula = [-S[e[id]][t], -Y[e[id]][t-1]]
         encodings.append(formula)
-
-top = cnt
+# a^b=>c
+# -av-bvc
+# -cva
+# -cvb
+for e in events:
+    for t in range(1,no_of_times):
+        a=Y[e][t]
+        b=-Y[e][t-1]
+        c=S[e][t]
+        encodings.append([-a,-b,c])
+        encodings.append([a,-c])
+        encodings.append([b,-c])
+    encodings.append([Y[e][0],-S[e][0]])
+    encodings.append([-Y[e][0],S[e][0]])
+top = cnt+1
+for e in events:
+    d=int(events[e]['Duration'])
+    for t in range(no_of_times):
+        if t!=0:
+            for j in range(6-t%5, 6):
+                encodings.append([-K[e][t][j]])
 # Distribute split events
+
 
 for e_key in events:
     e = events[e_key]
@@ -76,6 +99,7 @@ for e_key in events:
             formula.append(K[e_key][t][d])
 
         formulaTOT = Totalizer(lits=formula, top=cnt)
+        add_tot_clauses(formulaTOT)
         for f in formulaTOT.clauses:
             encodings.append(f)
         cnt = max(abs(lit) for clause in formulaTOT.clauses for lit in clause) + 1
@@ -89,14 +113,16 @@ for e_key in events:
 
         if mini > 0:
             encodings.append([formulaTOT.root.lits[1]], costFunction[c['CostFunction']](mini) * int(c['Weight']))
-        for i in range(1, mini):
+        for i in range(2, mini):
             # encode a ^ b as exactly_2(a,b)
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
-            encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i) * int(c['Weight']))
+            add_tot_clauses(miniform)
+            encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i + 1) * int(c['Weight']))
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         for i in range(maximum + 2, len(formula) + 1):
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
+            add_tot_clauses(miniform)
             encodings.append([miniform.root.lits[2]],
                              costFunction[c['CostFunction']](i - maximum - 1) * int(c['Weight']))
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
@@ -289,19 +315,22 @@ for rs in resources:
         for tg in c['TimeGroups']:
             lst.append(D[rs][tg])
         tot = Totalizer(lst, top=cnt)
+        add_tot_clauses(tot)
         cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
         if mini > 0:
             encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
-        for i in range(1, mini):
+        for i in range(2, mini):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
-            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i))
+            add_tot_clauses(minitot)
+            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i + 1))
             cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
         for i in range(maximum + 2, len(lst) + 1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
+            add_tot_clauses(minitot)
             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](i - maximum - 1))
             cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
         if maximum < len(lst):
@@ -338,11 +367,13 @@ for e in events:
 
         if len(list) > 1:
             tot = Totalizer(list, top=cnt)
+            add_tot_clauses(tot)
             cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
-
             encodings.append([tot.root.lits[2], -tot.root.lits[1], S[e][t]])
             encodings.append([- S[e][t], -tot.root.lits[2]])
             encodings.append([- S[e][t], tot.root.lits[1]])
+            for i in range(2,len(tot.root.lits)):
+                encodings.append([-tot.root.lits[i]])
         else:
             encodings.append([-S[e][t], list[0]])
             encodings.append([-list[0], S[e][t]])
@@ -354,5 +385,30 @@ for e in events:
     cnt = max(abs(lit) for clause in card.clauses for lit in clause) + 1
 
 rc2 = RC2(encodings)
-rc2.compute()
+mm=rc2.compute()
+lm=[]
+for jj in mm:
+    lm.append(abs(jj))
 print(rc2.cost)
+m = [0] * (max(lm) + 1)
+
+# Place each element of the input array at its corresponding index in the output array
+for i, x in enumerate(mm):
+    m[abs(x)] = x
+for e in events:
+    dur=0
+    print(e, end=' starts at: \n')
+    for i in range(25):
+        if m[S[e][i]]>0:
+            print(i, end=' and takes: \n')
+        if m[Y[e][i]]>0:
+            print(f"active at {i}")
+            dur+=1
+            for d in range(1,6):
+                if(m[K[e][i][d]]>0):
+                   print(f"{d} at {i}")
+    print(f"A total of {dur} time slots")
+# e='T8-S3'
+# for d in range(6):
+#     #if(m[K[e][0][d]]>0):
+#     print(m[K[e][0][d]])
