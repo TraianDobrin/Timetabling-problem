@@ -25,7 +25,7 @@ R = {}  # resource i busy at time j with event k
 A = {}  # resource i busy in time group j after time k
 B = {}  # resource i busy in time group j before time k
 X = {}  # resource r busy at time i
-D = {}  # event i happens during time group j
+D = {}  # resource i is busy during time group j
 Idle = {}  # resource i idle in time group j at time k
 costFunction = {'Linear': lambda x: x, 'Quadratic': lambda x: x ** 2, 'Step': lambda x: 1 if x != 0 else 0}
 # Assign time constraint
@@ -71,8 +71,9 @@ for e in events:
         encodings.append([-a,-b,c])
         encodings.append([a,-c])
         encodings.append([b,-c])
-    encodings.append([Y[e][0],-S[e][0]])
-    encodings.append([-Y[e][0],S[e][0]])
+    for t in range(0,no_of_times,5):
+        encodings.append([Y[e][t],-S[e][t]])
+        encodings.append([-Y[e][t],S[e][t]])
 top = cnt+1
 for e in events:
     d=int(events[e]['Duration'])
@@ -117,18 +118,18 @@ for e_key in events:
             # encode a ^ b as exactly_2(a,b)
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
             add_tot_clauses(miniform)
-            encodings.append([miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i + 1) * int(c['Weight']))
+            encodings.append([-miniform.root.lits[2]], costFunction[c['CostFunction']](mini - i + 1) * int(c['Weight']))
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         for i in range(maximum + 2, len(formula) + 1):
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
             add_tot_clauses(miniform)
-            encodings.append([miniform.root.lits[2]],
+            encodings.append([-miniform.root.lits[2]],
                              costFunction[c['CostFunction']](i - maximum - 1) * int(c['Weight']))
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         if maximum < len(formula):
-            encodings.append([formulaTOT.root.lits[len(formula)]],
+            encodings.append([-formulaTOT.root.lits[len(formula)]],
                              costFunction[c['CostFunction']]((len(formula) - maximum)) * int(c['Weight']))
 
 # Prefer times constraint
@@ -146,23 +147,25 @@ for cc in spread_events:
     c = spread_events[cc]
     for tg in c['Times']:
         c_times.append([])
-        lims.append([tg['Minimum'], tg['Maximum']])
+        lims.append([int(tg['Minimum']), int(tg['Maximum'])])
         for t in timeGroups[tg['TimeGroup']]:
             c_times[len(c_times) - 1].append(slot[t])
     for ev_group in c['EventGroups']:
         lst = []
         for e in eventGroups[ev_group]:
-            for x in c_times:
+            for x,l in zip(c_times,lims):
                 lst = []
                 for y in x:
                     lst.append(S[e][y])
-                formula = CardEnc.atmost(lits=lst, bound=1, top_id=cnt)
-                cnt = 1 + max(abs(lit) for clause in formula for lit in clause) +1
-                # a bit hardcoded until we find an efficient way to count variables for easy cardinality constraints(
-                # maybe a totalizer would be nice)
-                # print(lst)
-                for f in formula.clauses:
-                    encodings.append(f)
+                formula = Totalizer(lits=lst,top=cnt)
+                add_tot_clauses(formula)
+                if l[0]!=0:
+                    encodings.append([formula.root.lits[l[0]]])
+                if l[1]+1!=len(formula.root.lits):
+                    encodings.append([-formula.root.lits[l[1]+1]])
+                else:
+                    encodings.append([formula.root.lits[len(lst)]])
+                cnt = 1 + max(abs(lit) for clause in formula.clauses for lit in clause)
 
 # Avoid clashes constraint
 for r in resources:
@@ -181,6 +184,13 @@ for r in resources:
             encodings.append(f)
         R[r].append(dct)
 
+for e in events:
+    res=[]
+    for x in events[e]['Resources']:
+        res.append(x)
+    for t in range(no_of_times):
+        for r in res:
+            encodings.append([-Y[e][t],R[r][t][e]])
 # Limit idle times constraint
 
 for x in resources:
@@ -342,7 +352,6 @@ for r in resources:
     if len(resources[r]['AvoidUnavailableTimes']) == 0:
         continue
     for c in resources[r]['AvoidUnavailableTimes']:
-        print(avoid_unavailable_times[c]['Times'])
         for t in avoid_unavailable_times[c]['Times']:
             encodings.append([-X[r][slot[t]]])
 # s[e][t] <=>  exactly_1 (k[e][t][1], k[e][t][2])
@@ -361,6 +370,8 @@ for e in events:
             list.append(K[e][t][d])
             for di in range(t, t + d):
                 encodings.append([-K[e][t][d], Y[e][di]])
+            if (t+d)%5!=0:
+                encodings.append([-K[e][t][d], -Y[e][t+d]])
 
         if len(list) == 0:
             print(t)
