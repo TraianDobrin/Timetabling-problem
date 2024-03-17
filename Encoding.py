@@ -114,7 +114,7 @@ for e_key in events:
 
         if mini > 0:
             encodings.append([formulaTOT.root.lits[1]], costFunction[c['CostFunction']](mini) * int(c['Weight']))
-        for i in range(2, mini):
+        for i in range(2, mini+1):
             # encode a ^ b as exactly_2(a,b)
             miniform = Totalizer(lits=[-formulaTOT.root.lits[i], formulaTOT.root.lits[i - 1]], top=cnt)
             add_tot_clauses(miniform)
@@ -126,6 +126,7 @@ for e_key in events:
             add_tot_clauses(miniform)
             encodings.append([-miniform.root.lits[2]],
                              costFunction[c['CostFunction']](i - maximum - 1) * int(c['Weight']))
+
             cnt = max(abs(lit) for clause in miniform.clauses for lit in clause) + 1
 
         if maximum < len(formula):
@@ -185,23 +186,18 @@ for r in resources:
         R[r].append(dct)
 
 for e in events:
-    res=[]
-    for x in events[e]['Resources']:
-        res.append(x)
     for t in range(no_of_times):
-        for r in res:
+        lst=[]
+        for r in events[e]['Resources']:
             encodings.append([-Y[e][t],R[r][t][e]])
-# Limit idle times constraint
+            encodings.append([Y[e][t],-R[r][t][e]])
+            if e=='T1-S2' and t==0:
+                print(f"ba {Y[e][t]} {R[r][t][e]}")
+        for r in resources:
+            if r not in events[e]['Resources']:
+                encodings.append([-R[r][t][e]])
 
-for x in resources:
-    R[x] = []
-    for t in range(no_of_times):
-        # encoding equivalence relation here
-        dct = {}
-        for e in events:
-            dct[e] = cnt + 1
-            cnt += 1
-        R[x].append(dct)
+# Limit idle times constraint
 
 for x in resources:
     tg = []
@@ -249,31 +245,39 @@ for x in resources:
         newlst = copy.deepcopy(lst)
         newlst.append(-X[x][t])
         encodings.append(newlst)
-
+#
 for x in resources:
     tg = []
     for tg_key in timeGroups:
+        if tg_key=='gr_TimesDurationTwo':
+            continue
         tg = timeGroups[tg_key]
         # print(slot[tg[len(tg) - 1]])
         encodings.append([-A[x][tg_key][slot[tg[len(tg) - 1]] % 5]])
         encodings.append([-B[x][tg_key][0]])
-        for tt in tg[:len(tg) - 1]:
+        for tt in reversed(tg[:-1]):
             t = int(slot[tt]) % 5
-            # a[x][tgkey][t]<=>()
-            encodings.append([-A[x][tg_key][t], A[x][tg_key][t + 1], X[x][t + 1]])
+#             # a[x][tgkey][t]<=>()
+            encodings.append([-A[x][tg_key][t], A[x][tg_key][t + 1], X[x][slot[tt] + 1]])
             encodings.append([A[x][tg_key][t], -A[x][tg_key][t + 1]])
-            encodings.append([A[x][tg_key][t], -X[x][t + 1]])
+            encodings.append([A[x][tg_key][t], -X[x][slot[tt] + 1]])
+#             lst=[]
+#             for nt in range(slot[tt]+1,len(tg)):
+#                 lst.append(X[x][nt])
+#                 encodings.append([-X[x][nt],A[x][tg_key][slot[tt]%5]])
+#             lst.append(A[x][tg_key][slot[tt]%5])
+#             encodings.append(lst)
 
         for tt in tg[1:]:
             t = int(slot[tt]) % 5
-            encodings.append([-B[x][tg_key][t], B[x][tg_key][t - 1], X[x][t - 1]])
+            encodings.append([-B[x][tg_key][t], B[x][tg_key][t - 1], X[x][slot[tt] - 1]])
             encodings.append([B[x][tg_key][t], -B[x][tg_key][t - 1]])
-            encodings.append([B[x][tg_key][t], -X[x][t - 1]])
+            encodings.append([B[x][tg_key][t], -X[x][slot[tt] - 1]])
 
         for tt in tg:
             t = int(slot[tt]) % 5
-            encodings.append([Idle[x][tg_key][t], X[x][t], -A[x][tg_key][t], -B[x][tg_key][t]])
-            encodings.append([-Idle[x][tg_key][t], -X[x][t]])
+            encodings.append([Idle[x][tg_key][t], X[x][slot[tt]], -A[x][tg_key][t], -B[x][tg_key][t]])
+            encodings.append([-Idle[x][tg_key][t], -X[x][slot[tt]]])
             encodings.append([-Idle[x][tg_key][t], A[x][tg_key][t]])
             encodings.append([-Idle[x][tg_key][t], B[x][tg_key][t]])
 
@@ -301,7 +305,7 @@ for rs in resourceGroups['gr_Teachers']:
         lst = []
         for tt in timeGroups[tg]:
             # print(tt)
-            lst.append(X[rs][slot[tt] % 5])
+            lst.append(X[rs][slot[tt]])
         newlst = copy.deepcopy(lst)
         newlst.append(-D[rs][tg])
         encodings.append(newlst)
@@ -329,7 +333,7 @@ for rs in resources:
         cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
         if mini > 0:
             encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
-        for i in range(2, mini):
+        for i in range(2, mini+1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
             minitot = Totalizer([-a, b], top=cnt)
@@ -366,15 +370,13 @@ for e in events:
     for t in range(no_of_times):
         y_list.append(Y[e][t])
         list = []
-        for d in range(1, min(duration + 1, 6 - t % 5)):
+        for d in range(1, min(duration + 1, min(3,6 - t % 5))):
             list.append(K[e][t][d])
             for di in range(t, t + d):
                 encodings.append([-K[e][t][d], Y[e][di]])
             if (t+d)%5!=0:
                 encodings.append([-K[e][t][d], -Y[e][t+d]])
 
-        if len(list) == 0:
-            print(t)
 
         if len(list) > 1:
             tot = Totalizer(list, top=cnt)
@@ -394,6 +396,15 @@ for e in events:
         encodings.append(clause)
 
     cnt = max(abs(lit) for clause in card.clauses for lit in clause) + 1
+
+#event active<=> resources busy
+# for e in events:
+#     for t in range(no_of_times):
+#         for r in events[e]['Resources']:
+#             encodings.append([-Y[e][t],R[r][t][e]])
+#             encodings.append([Y[e][t],-R[r][t][e]])
+
+
 
 rc2 = RC2(encodings)
 mm=rc2.compute()
@@ -419,7 +430,15 @@ for e in events:
                 if(m[K[e][i][d]]>0):
                    print(f"{d} at {i}")
     print(f"A total of {dur} time slots")
-# e='T8-S3'
-# for d in range(6):
-#     #if(m[K[e][0][d]]>0):
-#     print(m[K[e][0][d]])
+print(m[R['T1'][0]['T1-S2']])
+print(m[Y['T1-S2'][0]])
+print(rc2.oracle_time())
+for r in resources:
+    print(r)
+    for i in range(5):
+        print(m[A[r]['gr_Mo'][i]])
+for r in events:
+
+    if(m[R['T1'][16][r]]>0):
+        print(r)
+print("a")
