@@ -46,9 +46,10 @@ for e_key in events:
     Y[e[id]] = []
     for t in range(no_of_times):
         S[e[id]].append(cnt + 1)
+
         formula.append(S[e[id]][t])
         cnt += 1
-
+    print(S[e[id]])
     encodings.append(formula)
 
     for t in range(no_of_times):
@@ -59,6 +60,8 @@ for e_key in events:
     for t in range(1,no_of_times):
         formula = [-S[e[id]][t], -Y[e[id]][t-1]]
         encodings.append(formula)
+print(cnt)
+print("asta e cnt")
 # a^b=>c
 # -av-bvc
 # -cva
@@ -332,21 +335,23 @@ for rs in resources:
         add_tot_clauses(tot)
         cnt = max(abs(lit) for clause in tot.clauses for lit in clause) + 1
         if mini > 0:
-            encodings.append(tot.root.lits[1], weight=w * costFunction[cf](mini))
+            encodings.append([tot.root.lits[1]], weight=w * costFunction[cf](mini))
         for i in range(2, mini+1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
-            minitot = Totalizer([-a, b], top=cnt)
-            add_tot_clauses(minitot)
-            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i + 1))
-            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
+#             minitot = Totalizer([-a, b], top=cnt)
+#             add_tot_clauses(minitot)
+#             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](mini - i + 1))
+#             cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
+            encodings.append([a,-b], weight=w*costFunction[cf](mini-i+1))
         for i in range(maximum + 2, len(lst) + 1):
             a = tot.root.lits[i]
             b = tot.root.lits[i - 1]
-            minitot = Totalizer([-a, b], top=cnt)
-            add_tot_clauses(minitot)
-            encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](i - maximum - 1))
-            cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
+#             minitot = Totalizer([-a, b], top=cnt)
+#             add_tot_clauses(minitot)
+#             encodings.append([-minitot.root.lits[2]], weight=w * costFunction[cf](i - maximum - 1))
+#             cnt = max(abs(lit) for clause in minitot.clauses for lit in clause) + 1
+            encodings.append([a,-b], weight=w*costFunction[cf](i-maximum-1))
         if maximum < len(lst):
             encodings.append([-tot.root.lits[len(lst)]], weight=w * costFunction[cf](len(lst) - maximum))
 
@@ -394,6 +399,7 @@ for e in events:
     card = CardEnc.equals(y_list, bound=duration, top_id=cnt)
     for clause in card.clauses:
         encodings.append(clause)
+        #print("clause " + str(clause))
 
     cnt = max(abs(lit) for clause in card.clauses for lit in clause) + 1
 
@@ -403,9 +409,88 @@ for e in events:
 #         for r in events[e]['Resources']:
 #             encodings.append([-Y[e][t],R[r][t][e]])
 #             encodings.append([Y[e][t],-R[r][t][e]])
+print(S['T1-S1'][0])
+# encodings.append([S['T1-S1'][15]])
+# encodings.append([S['T1-S1'][5]])
+# encodings.append([S['T1-S2'][9]])
+# encodings.append([S['T1-S2'][16]])
+# encodings.append([S['T1-S3'][7]])
+# encodings.append([S['T1-S3'][18]])
+# encodings.append([S['T2-S1'][12]])
+# encodings.append([S['T2-S1'][16]])
+# encodings.append([S['T2-S1'][7]])
+# encodings.append([S['T2-S2'][15]])
+# encodings.append([S['T2-S2'][10]])
+print("len")
+print(type(encodings.unweighted()))
+with open("encoding.dimacs", 'w') as file:
+        # Write the header line
+        file.write(encodings.to_dimacs())
 
+vars=[]
+# for e in events:
+#     for t in range(no_of_times):
+#         for d in range(1,6):
+#             vars.append(K[e][t][d])
+# for e in events:
+#     for t in range(no_of_times):
+#         vars.append(S[e][t])
+# for tg in timeGroups:
+#     if tg == 'gr_TimesDurationTwo':
+#         continue
+#     for r_key in resourceGroups['gr_Teachers']:
+#         for t in timeGroups[tg]:
+#             vars.append(-Idle[r_key][tg][slot[t] % 5])
+for x in encodings.soft:
+    for y in x:
+        vars.append(y)
 
+with open("specialVars.txt", 'w') as file:
+        # Write the header line
+        for v in vars:
+            file.write(str(v)+" ")
 
+with open("somevars.txt", "r") as file:
+    # Read each line of the file
+    lines = file.readlines()
+
+# Initialize an empty list to store the numbers
+numbers = []
+
+# Iterate over each line in the file
+for line in lines:
+    # Split the line into numbers based on whitespace
+    line_numbers = line.strip().split()
+
+    # Convert each number to an integer and append it to the list of numbers
+    numbers.extend(map(int, line_numbers))
+
+# Print the numbers array
+print(encodings.soft)
+cntt=0
+# print("out of " + str(len(numbers)))
+# for number_to_check in numbers:
+#     for key, value in Y.items():
+#         if number_to_check in value:
+#             cntt+=1
+#             break
+# for number_to_check in numbers:
+#     found = False
+#     for event_list in K.values():
+#         for time_dict in event_list:
+#             # Check if the number is in the current value list
+#             #print(time_dict.values())
+#             if number_to_check in time_dict:
+#                 # If found, increment the counter and set the flag to True
+#                 cntt += 1
+#                 found = True
+#                 break  # Exit the inner loop once the number is found
+#         if found:
+#             break  # Exit the outer loop once the number is found
+#     if found:
+#         break  # Exit the outermost loop once the number is found
+print(cntt)
+'''
 rc2 = RC2(encodings)
 mm=rc2.compute()
 lm=[]
@@ -430,6 +515,8 @@ for e in events:
                 if(m[K[e][i][d]]>0):
                    print(f"{d} at {i}")
     print(f"A total of {dur} time slots")
+
+
 print(m[R['T1'][0]['T1-S2']])
 print(m[Y['T1-S2'][0]])
 print(rc2.oracle_time())
@@ -442,3 +529,4 @@ for r in events:
     if(m[R['T1'][16][r]]>0):
         print(r)
 print("a")
+'''

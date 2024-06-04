@@ -4,7 +4,6 @@ class Totalizer:
         self.clauses = []
         queue = []
         if 0 in lits:
-            print("coaie")
             print(lits)
         for x in lits:
             node = Node([x])

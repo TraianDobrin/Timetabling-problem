@@ -1,3 +1,47 @@
+from Encoding import *
+with open('assignment.txt', 'r') as file:
+    numbers_string = file.read()
+
+
+numbers_list = numbers_string.split()
+
+# Convert the numbers from string to int (if needed)
+mm = [int(num) for num in numbers_list]
+lm=[]
+for jj in mm:
+    lm.append(abs(jj))
+#print(rc2.cost)
+m = [0] * (max(lm) + 1)
+
+# Place each element of the input array at its corresponding index in the output array
+for i, x in enumerate(mm):
+    m[abs(x)] = x
+for e in events:
+    dur=0
+    print(e, end=' starts at: \n')
+    for i in range(25):
+        if m[S[e][i]]>0:
+            print(i, end=' and takes: \n')
+        if m[Y[e][i]]>0:
+            print(f"active at {i}")
+            dur+=1
+            for d in range(1,6):
+                if(m[K[e][i][d]]>0):
+                   print(f"{d} at {i}")
+    print(f"A total of {dur} time slots")
+
+
+print(m[R['T1'][0]['T1-S2']])
+print(m[Y['T1-S2'][0]])
+for r in resources:
+    print(r)
+    for i in range(5):
+        print(m[A[r]['gr_Mo'][i]])
+for r in events:
+
+    if(m[R['T1'][16][r]]>0):
+        print(r)
+
 from Totalizer import *
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
