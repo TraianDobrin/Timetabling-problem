@@ -432,18 +432,18 @@ vars=[]
 #     for t in range(no_of_times):
 #         for d in range(1,6):
 #             vars.append(K[e][t][d])
-# for e in events:
-#     for t in range(no_of_times):
-#         vars.append(S[e][t])
+for e in events:
+    for t in range(no_of_times):
+        vars.append(S[e][t])
 # for tg in timeGroups:
 #     if tg == 'gr_TimesDurationTwo':
 #         continue
 #     for r_key in resourceGroups['gr_Teachers']:
 #         for t in timeGroups[tg]:
 #             vars.append(-Idle[r_key][tg][slot[t] % 5])
-for x in encodings.soft:
-    for y in x:
-        vars.append(y)
+# for x in encodings.soft:
+#     for y in x:
+#         vars.append(y)
 
 with open("specialVars.txt", 'w') as file:
         # Write the header line

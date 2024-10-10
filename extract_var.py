@@ -22,6 +22,8 @@ for x in numbers:
             print(x)
             break
 print(len(ans))
+print(len(numbers))
+print(" asta era cate sunt")
 with open('file.txt', 'w') as file:
         for number in ans:
             file.write(str(number) + ' ')

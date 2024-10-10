@@ -2,7 +2,8 @@ import subprocess
 import re
 def run_with_timeout(timeout):
     # Define the path to the instance file
-    path_to_instance = r"..\..\Documents\GitHub\Timetabling-problem\encoding.wcnf"
+    #path_to_instance = r"..\..\Documents\GitHub\Timetabling-problem\encoding.wcnf"
+    path_to_instance=r"instances/myBrazilExtraInfo.wcnf"
 
     # Define the shell command
     command = r"cd ..\..\..\Pumpkin\pumpkin-private && target\release\pumpkin-cli.exe -t " + str(timeout) + " " + path_to_instance
@@ -12,6 +13,7 @@ def run_with_timeout(timeout):
 
     # Execute the command and capture its output line by line
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, universal_newlines=True, cwd="C:")
+    #process.wait()
     number = None
     #print(process.stdout.read())
     for line in process.stdout:
@@ -23,4 +25,4 @@ def run_with_timeout(timeout):
            # Extract the captured number
            number = match.group(1)
     return number
-print(run_with_timeout(100000))
+print(run_with_timeout(100))
