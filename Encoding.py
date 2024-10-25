@@ -409,7 +409,6 @@ for e in events:
 #         for r in events[e]['Resources']:
 #             encodings.append([-Y[e][t],R[r][t][e]])
 #             encodings.append([Y[e][t],-R[r][t][e]])
-print(S['T1-S1'][0])
 # encodings.append([S['T1-S1'][15]])
 # encodings.append([S['T1-S1'][5]])
 # encodings.append([S['T1-S2'][9]])
@@ -421,20 +420,23 @@ print(S['T1-S1'][0])
 # encodings.append([S['T2-S1'][7]])
 # encodings.append([S['T2-S2'][15]])
 # encodings.append([S['T2-S2'][10]])
-print("len")
-print(type(encodings.unweighted()))
-with open("encoding.dimacs", 'w') as file:
+
+with open("encoding_brazil2_v2.wcnf", 'w') as file:
         # Write the header line
         file.write(encodings.to_dimacs())
+        file.write("\n")
+        for event, vars_list in Y.items():
+            vars_str = " ".join(map(str, vars_list))
+            file.write(f"c {event}: {vars_str}\n")
 
-vars=[]
+# vars=[]
+# # for e in events:
+# #     for t in range(no_of_times):
+# #         for d in range(1,6):
+# #             vars.append(K[e][t][d])
 # for e in events:
 #     for t in range(no_of_times):
-#         for d in range(1,6):
-#             vars.append(K[e][t][d])
-for e in events:
-    for t in range(no_of_times):
-        vars.append(S[e][t])
+#         vars.append(S[e][t])
 # for tg in timeGroups:
 #     if tg == 'gr_TimesDurationTwo':
 #         continue
@@ -445,29 +447,29 @@ for e in events:
 #     for y in x:
 #         vars.append(y)
 
-with open("specialVars.txt", 'w') as file:
-        # Write the header line
-        for v in vars:
-            file.write(str(v)+" ")
-
-with open("somevars.txt", "r") as file:
-    # Read each line of the file
-    lines = file.readlines()
-
-# Initialize an empty list to store the numbers
-numbers = []
-
-# Iterate over each line in the file
-for line in lines:
-    # Split the line into numbers based on whitespace
-    line_numbers = line.strip().split()
-
-    # Convert each number to an integer and append it to the list of numbers
-    numbers.extend(map(int, line_numbers))
+# with open("specialVars.txt", 'w') as file:
+#         # Write the header line
+#         for v in vars:
+#             file.write(str(v)+" ")
+#
+# with open("somevars.txt", "r") as file:
+#     # Read each line of the file
+#     lines = file.readlines()
+#
+# # Initialize an empty list to store the numbers
+# numbers = []
+#
+# # Iterate over each line in the file
+# for line in lines:
+#     # Split the line into numbers based on whitespace
+#     line_numbers = line.strip().split()
+#
+#     # Convert each number to an integer and append it to the list of numbers
+#     numbers.extend(map(int, line_numbers))
 
 # Print the numbers array
-print(encodings.soft)
-cntt=0
+# print(encodings.soft)
+# cntt=0
 # print("out of " + str(len(numbers)))
 # for number_to_check in numbers:
 #     for key, value in Y.items():
@@ -489,7 +491,7 @@ cntt=0
 #             break  # Exit the outer loop once the number is found
 #     if found:
 #         break  # Exit the outermost loop once the number is found
-print(cntt)
+# print(cntt)
 '''
 rc2 = RC2(encodings)
 mm=rc2.compute()
