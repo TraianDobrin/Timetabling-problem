@@ -421,7 +421,7 @@ for e in events:
 # encodings.append([S['T2-S2'][15]])
 # encodings.append([S['T2-S2'][10]])
 
-with open("encoding_brazil2_v2.wcnf", 'w') as file:
+with open("encoding_brazil1.wcnf", 'w') as file:
         # Write the header line
         file.write(encodings.to_dimacs())
         file.write("\n")

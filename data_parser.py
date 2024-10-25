@@ -35,7 +35,7 @@ def parseResource(resource):
 
 
 # Parse the XML file
-tree = ET.parse('data2.xml')
+tree = ET.parse('data.xml')
 root = tree.getroot()
 
 # Define dictionaries to store parsed data
